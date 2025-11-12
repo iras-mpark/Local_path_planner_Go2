@@ -1,0 +1,26 @@
+<launch>
+
+  <arg name="checkTerrainConn" default="true"/>
+  <arg name="launch_mapping" default="true"/>
+
+  <group if="$(var launch_mapping)">
+    <node pkg="transform_sensors" exec="transform_everything" name="utlidar_transform" output="screen"/>
+
+    <include file="$(find-pkg-share point_lio_unilidar)/launch/mapping_utlidar.launch">
+      <arg name="rviz" value="false"/>
+    </include>
+  </group>
+
+  <include file="$(find-pkg-share terrain_analysis)/launch/terrain_analysis.launch"/>
+
+  <include file="$(find-pkg-share terrain_analysis_ext)/launch/terrain_analysis_ext.launch">
+    <arg name="checkTerrainConn" value="$(var checkTerrainConn)"/>
+  </include>
+
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="loam_map_to_camera_init"
+        args="0 0 0 0 0 0 /map /camera_init"/>
+
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="loam_aft_to_sensor"
+        args="0 0 0 0 0 0 /aft_mapped /sensor"/>
+
+</launch>

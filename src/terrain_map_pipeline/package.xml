@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>terrain_map_pipeline</name>
+  <version>0.1.0</version>
+  <description>Standalone launch package to build terrain_map_ext from Go2 sensor streams.</description>
+
+  <maintainer email="maintainer@example.com">Autonomy Stack</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>transform_sensors</exec_depend>
+  <exec_depend>point_lio_unilidar</exec_depend>
+  <exec_depend>terrain_analysis</exec_depend>
+  <exec_depend>terrain_analysis_ext</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <export/>
+</package>
