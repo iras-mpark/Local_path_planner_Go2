@@ -119,6 +119,12 @@ class SimpleLocalPlanner(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
         )
+        grid_qos = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
 
         self.create_subscription(PointCloud2, self.scan_topic, self._scan_callback, sensor_qos)
         self.path_pub = self.create_publisher(Path, "/path", 10)
@@ -131,8 +137,8 @@ class SimpleLocalPlanner(Node):
             self.obstacle_pub = None
 
         if self.publish_grid_topics:
-            self.grid_pub = self.create_publisher(OccupancyGrid, "/local_obstacles_grid", debug_qos)
-            self.potential_pub = self.create_publisher(OccupancyGrid, "/local_potential_grid", debug_qos)
+            self.grid_pub = self.create_publisher(OccupancyGrid, "/local_obstacles_grid", grid_qos)
+            self.potential_pub = self.create_publisher(OccupancyGrid, "/local_potential_grid", grid_qos)
         else:
             self.grid_pub = None
             self.potential_pub = None
