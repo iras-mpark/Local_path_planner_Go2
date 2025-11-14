@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>local_lidar_planner</name>
+  <version>0.0.1</version>
+  <description>Purely local LiDAR-based obstacle avoidance planner implemented in Python for standalone deployments.</description>
+
+  <maintainer email="maintainer@example.com">Autonomy Stack</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf_transformations</exec_depend>
+  <exec_depend>unitree_api</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

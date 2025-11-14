@@ -1,0 +1,61 @@
+<launch>
+  <!-- Terrain map pipeline arguments -->
+  <arg name="checkTerrainConn" default="true"/>
+  <arg name="launch_mapping" default="true"/>
+
+  <!-- Local planner arguments -->
+  <arg name="start_local_planner" default="true"/>
+  <arg name="path_frame" default="sensor"/>
+  <arg name="cmd_frame" default="sensor"/>
+  <arg name="max_speed" default="0.45"/>
+  <arg name="speed_gain" default="0.5"/>
+  <arg name="lookahead_distance" default="0.5"/>
+  <arg name="goal_tolerance" default="0.2"/>
+  <arg name="angular_gain" default="2.0"/>
+  <arg name="max_yaw_rate" default="1.0"/>
+  <arg name="safety_radius" default="0.45"/>
+  <arg name="max_path_length" default="4.0"/>
+  <arg name="goal_offset" default="1.0"/>
+  <arg name="publish_rate_hz" default="15.0"/>
+  <arg name="goal_tf_timeout" default="0.5"/>
+  <arg name="is_real_robot" default="true"/>
+  <arg name="scan_topic" default="/terrain_map_ext"/>
+  <arg name="goal_tf_frame" default="suitcase_frame"/>
+  <arg name="obstacle_z_min" default="-0.0"/>
+  <arg name="obstacle_z_max" default="1.0"/>
+  <arg name="grid_resolution" default="0.2"/>
+  <arg name="max_considered_range" default="4.0"/>
+
+  <!-- Terrain mapping pipeline builds /terrain_map_ext -->
+  <include file="$(find-pkg-share terrain_map_pipeline)/launch/terrain_map_ext_pipeline.launch.xml">
+    <arg name="checkTerrainConn" value="$(var checkTerrainConn)"/>
+    <arg name="launch_mapping" value="$(var launch_mapping)"/>
+  </include>
+
+  <!-- Local lidar planner consumes /terrain_map_ext -->
+  <group if="$(var start_local_planner)">
+    <include file="$(find-pkg-share local_lidar_planner)/launch/local_lidar_planner.launch.xml">
+      <arg name="path_frame" value="$(var path_frame)"/>
+      <arg name="cmd_frame" value="$(var cmd_frame)"/>
+      <arg name="max_speed" value="$(var max_speed)"/>
+      <arg name="speed_gain" value="$(var speed_gain)"/>
+      <arg name="lookahead_distance" value="$(var lookahead_distance)"/>
+      <arg name="goal_tolerance" value="$(var goal_tolerance)"/>
+      <arg name="angular_gain" value="$(var angular_gain)"/>
+      <arg name="max_yaw_rate" value="$(var max_yaw_rate)"/>
+      <arg name="safety_radius" value="$(var safety_radius)"/>
+      <arg name="max_path_length" value="$(var max_path_length)"/>
+      <arg name="goal_offset" value="$(var goal_offset)"/>
+      <arg name="publish_rate_hz" value="$(var publish_rate_hz)"/>
+      <arg name="goal_tf_timeout" value="$(var goal_tf_timeout)"/>
+      <arg name="is_real_robot" value="$(var is_real_robot)"/>
+      <arg name="scan_topic" value="$(var scan_topic)"/>
+      <arg name="goal_tf_frame" value="$(var goal_tf_frame)"/>
+      <arg name="obstacle_z_min" value="$(var obstacle_z_min)"/>
+      <arg name="obstacle_z_max" value="$(var obstacle_z_max)"/>
+      <arg name="grid_resolution" value="$(var grid_resolution)"/>
+      <arg name="max_considered_range" value="$(var max_considered_range)"/>
+    </include>
+  </group>
+
+</launch>
