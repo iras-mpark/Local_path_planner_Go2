@@ -1,0 +1,85 @@
+<launch>
+  <!-- Shared planner/follower args -->
+  <arg name="path_frame" default="sensor"/>
+  <arg name="cmd_frame" default="sensor"/>
+  <arg name="max_speed" default="0.45"/>
+  <arg name="speed_gain" default="0.5"/>
+  <arg name="lookahead_distance" default="0.5"/>
+  <arg name="goal_tolerance" default="0.2"/>
+  <arg name="angular_gain" default="2.0"/>
+  <arg name="max_yaw_rate" default="1.0"/>
+  <arg name="safety_radius" default="0.45"/>
+  <arg name="max_path_length" default="4.0"/>
+  <arg name="goal_offset" default="1.0"/>
+  <arg name="publish_rate_hz" default="15.0"/>
+  <arg name="goal_tf_timeout" default="0.5"/>
+  <arg name="is_real_robot" default="true"/>
+  <arg name="goal_tf_frame" default="suitcase_frame"/>
+  <arg name="obstacle_z_min" default="-0.0"/>
+  <arg name="obstacle_z_max" default="1.0"/>
+  <arg name="grid_resolution" default="0.2"/>
+  <arg name="max_considered_range" default="4.0"/>
+  <arg name="scan_tf_timeout" default="0.05"/>
+  <arg name="publish_debug_topics" default="false"/>
+
+  <!-- Sliding map specific args -->
+  <arg name="sliding_input_topic" default="/terrain_map_ext"/>
+  <arg name="sliding_output_topic" default="/local_sliding_map"/>
+  <arg name="sliding_target_frame" default="odom"/>
+  <arg name="sliding_window_seconds" default="3.0"/>
+  <arg name="sliding_publish_rate_hz" default="8.0"/>
+  <arg name="sliding_max_scans" default="15"/>
+  <arg name="sliding_max_points" default="40000"/>
+  <arg name="sliding_min_points_to_publish" default="200"/>
+  <arg name="sliding_tf_timeout" default="0.05"/>
+  <arg name="sliding_min_range" default="0.15"/>
+  <arg name="sliding_max_range" default="8.0"/>
+  <arg name="sliding_z_min" default="-1.0"/>
+  <arg name="sliding_z_max" default="1.5"/>
+
+  <node pkg="local_lidar_planner" exec="local_sliding_map.py" name="local_sliding_map" output="screen">
+    <param name="input_topic" value="$(var sliding_input_topic)"/>
+    <param name="output_topic" value="$(var sliding_output_topic)"/>
+    <param name="target_frame" value="$(var sliding_target_frame)"/>
+    <param name="publish_rate_hz" value="$(var sliding_publish_rate_hz)"/>
+    <param name="window_seconds" value="$(var sliding_window_seconds)"/>
+    <param name="max_scans" value="$(var sliding_max_scans)"/>
+    <param name="max_points" value="$(var sliding_max_points)"/>
+    <param name="min_points_to_publish" value="$(var sliding_min_points_to_publish)"/>
+    <param name="tf_timeout" value="$(var sliding_tf_timeout)"/>
+    <param name="min_range" value="$(var sliding_min_range)"/>
+    <param name="max_range" value="$(var sliding_max_range)"/>
+    <param name="z_min" value="$(var sliding_z_min)"/>
+    <param name="z_max" value="$(var sliding_z_max)"/>
+  </node>
+
+  <node pkg="local_lidar_planner" exec="local_lidar_planner_simple.py" name="local_lidar_planner_simple" output="screen">
+    <param name="path_frame" value="$(var path_frame)"/>
+    <param name="max_path_length" value="$(var max_path_length)"/>
+    <param name="publish_rate_hz" value="$(var publish_rate_hz)"/>
+    <param name="safety_radius" value="$(var safety_radius)"/>
+    <param name="scan_topic" value="$(var sliding_output_topic)"/>
+    <param name="scan_frame" value="$(var sliding_target_frame)"/>
+    <param name="goal_tf_frame" value="$(var goal_tf_frame)"/>
+    <param name="goal_offset" value="$(var goal_offset)"/>
+    <param name="goal_tf_timeout" value="$(var goal_tf_timeout)"/>
+    <param name="scan_tf_timeout" value="$(var scan_tf_timeout)"/>
+    <param name="obstacle_z_min" value="$(var obstacle_z_min)"/>
+    <param name="obstacle_z_max" value="$(var obstacle_z_max)"/>
+    <param name="grid_resolution" value="$(var grid_resolution)"/>
+    <param name="max_considered_range" value="$(var max_considered_range)"/>
+    <param name="publish_debug_topics" value="$(var publish_debug_topics)"/>
+  </node>
+
+  <node pkg="local_lidar_planner" exec="path_follower_simple.py" name="path_follower_simple" output="screen">
+    <param name="path_frame" value="$(var path_frame)"/>
+    <param name="cmd_frame" value="$(var cmd_frame)"/>
+    <param name="max_speed" value="$(var max_speed)"/>
+    <param name="speed_gain" value="$(var speed_gain)"/>
+    <param name="lookahead_distance" value="$(var lookahead_distance)"/>
+    <param name="goal_tolerance" value="$(var goal_tolerance)"/>
+    <param name="angular_gain" value="$(var angular_gain)"/>
+    <param name="max_yaw_rate" value="$(var max_yaw_rate)"/>
+    <param name="is_real_robot" value="$(var is_real_robot)"/>
+  </node>
+</launch>

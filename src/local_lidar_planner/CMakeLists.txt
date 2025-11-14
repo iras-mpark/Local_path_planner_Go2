@@ -10,6 +10,7 @@ endif()
 install(PROGRAMS
   scripts/local_lidar_planner_simple.py
   scripts/path_follower_simple.py
+  scripts/local_sliding_map.py
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
