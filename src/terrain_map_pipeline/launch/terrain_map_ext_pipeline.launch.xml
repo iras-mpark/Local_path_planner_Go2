@@ -13,9 +13,10 @@
 
   <include file="$(find-pkg-share terrain_analysis)/launch/terrain_analysis.launch"/>
 
-  <include file="$(find-pkg-share terrain_analysis_ext)/launch/terrain_analysis_ext.launch">
+  <!-- Match system_real_robot.launch: extended terrain analysis stays disabled -->
+  <!-- <include file="$(find-pkg-share terrain_analysis_ext)/launch/terrain_analysis_ext.launch">
     <arg name="checkTerrainConn" value="$(var checkTerrainConn)"/>
-  </include>
+  </include> -->
 
   <node pkg="tf2_ros" exec="static_transform_publisher" name="loam_map_to_camera_init"
         args="0 0 0 0 0 0 map camera_init"/>

@@ -13,7 +13,7 @@
   <arg name="publish_rate_hz" default="15.0"/>
   <arg name="goal_tf_timeout" default="0.5"/>
   <arg name="is_real_robot" default="true"/>
-  <arg name="scan_topic" default="/terrain_map_ext"/>
+  <arg name="scan_topic" default="/terrain_map"/>
   <arg name="goal_tf_frame" default="suitcase_frame"/>
   <arg name="obstacle_z_min" default="-0.0"/>
   <arg name="obstacle_z_max" default="1.0"/>
