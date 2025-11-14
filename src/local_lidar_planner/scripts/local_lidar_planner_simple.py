@@ -18,6 +18,12 @@ import rclpy
 from rclpy.duration import Duration
 from rclpy.time import Time
 from rclpy.node import Node
+from rclpy.qos import (
+    QoSProfile,
+    ReliabilityPolicy,
+    DurabilityPolicy,
+    HistoryPolicy,
+)
 
 from geometry_msgs.msg import PointStamped, PoseStamped
 from nav_msgs.msg import OccupancyGrid, Path
@@ -51,6 +57,7 @@ class SimpleLocalPlanner(Node):
         self.declare_parameter("goal_tf_frame", "")
         self.declare_parameter("goal_tf_timeout", 0.5)
         self.declare_parameter("obstacle_topic", "/local_obstacles")
+        self.declare_parameter("publish_debug_topics", False)
 
         self.path_frame: str = self.get_parameter("path_frame").get_parameter_value().string_value
         publish_rate_hz = self.get_parameter("publish_rate_hz").get_parameter_value().double_value
@@ -73,6 +80,7 @@ class SimpleLocalPlanner(Node):
         if not self.goal_tf_frame:
             raise ValueError("goal_tf_frame parameter must be set (e.g., 'suitcase_frame').")
         self.goal_tf_timeout = self.get_parameter("goal_tf_timeout").get_parameter_value().double_value
+        self.publish_debug_topics = self.get_parameter("publish_debug_topics").get_parameter_value().bool_value
 
         self.latest_obstacles: List[Tuple[float, float]] = []
 
@@ -84,14 +92,32 @@ class SimpleLocalPlanner(Node):
         self._last_goal_stale_warn_time = 0.0
 
         # Interfaces
-        self.create_subscription(PointCloud2, self.scan_topic, self._scan_callback, 5)
+        sensor_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=5,
+        )
+        debug_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+
+        self.create_subscription(PointCloud2, self.scan_topic, self._scan_callback, sensor_qos)
         self.path_pub = self.create_publisher(Path, "/path", 10)
         self.goal_pub = self.create_publisher(PointStamped, "/goal_preview", 5)
         self.goal_raw_pub = self.create_publisher(PointStamped, "/goal_raw", 5)
         obstacle_topic = self.get_parameter("obstacle_topic").get_parameter_value().string_value
-        self.obstacle_pub = self.create_publisher(PointCloud2, obstacle_topic, 5)
-        self.grid_pub = self.create_publisher(OccupancyGrid, "/local_obstacles_grid", 5)
-        self.potential_pub = self.create_publisher(OccupancyGrid, "/local_potential_grid", 5)
+        if self.publish_debug_topics:
+            self.obstacle_pub = self.create_publisher(PointCloud2, obstacle_topic, debug_qos)
+            self.grid_pub = self.create_publisher(OccupancyGrid, "/local_obstacles_grid", debug_qos)
+            self.potential_pub = self.create_publisher(OccupancyGrid, "/local_potential_grid", debug_qos)
+        else:
+            self.obstacle_pub = None
+            self.grid_pub = None
+            self.potential_pub = None
 
         self.timer = self.create_timer(1.0 / max(publish_rate_hz, 1e-3), self._on_timer)
         self.get_logger().info("Simple local planner ready (LiDAR-only, joystick-free).")
@@ -158,17 +184,18 @@ class SimpleLocalPlanner(Node):
             xy_points.append((tx, ty))
 
         now_msg = self.get_clock().now().to_msg()
-        obstacle_header = cloud.header
-        obstacle_header.frame_id = self.path_frame
-        if obstacle_points:
-            obstacle_msg = point_cloud2.create_cloud_xyz32(obstacle_header, obstacle_points)
-        else:
-            obstacle_msg = PointCloud2()
-            obstacle_msg.header = obstacle_header
-        obstacle_msg.header.stamp = now_msg
-        self.obstacle_pub.publish(obstacle_msg)
-        self.grid_pub.publish(self._build_grid_map(xy_points, inflated=False, stamp=now_msg))
-        self.potential_pub.publish(self._build_grid_map(xy_points, inflated=True, stamp=now_msg))
+        if self.obstacle_pub is not None:
+            obstacle_header = cloud.header
+            obstacle_header.frame_id = self.path_frame
+            if obstacle_points:
+                obstacle_msg = point_cloud2.create_cloud_xyz32(obstacle_header, obstacle_points)
+            else:
+                obstacle_msg = PointCloud2()
+                obstacle_msg.header = obstacle_header
+            obstacle_msg.header.stamp = now_msg
+            self.obstacle_pub.publish(obstacle_msg)
+            self.grid_pub.publish(self._build_grid_map(xy_points, inflated=False, stamp=now_msg))
+            self.potential_pub.publish(self._build_grid_map(xy_points, inflated=True, stamp=now_msg))
         self.latest_obstacles = xy_points
 
     # ------------------------------------------------------------------ Timer

@@ -25,11 +25,12 @@
   <arg name="obstacle_z_max" default="1.0"/>
   <arg name="grid_resolution" default="0.2"/>
   <arg name="max_considered_range" default="4.0"/>
+  <arg name="publish_debug_topics" default="false"/>
 
   <!-- Optional TF bridge between robot base and sensor frame -->
   <arg name="publish_sensor_base_tf" default="true"/>
-  <arg name="sensor_parent_frame" default="base_link"/>
-  <arg name="sensor_child_frame" default="sensor"/>
+  <arg name="sensor_parent_frame" default="sensor"/>
+  <arg name="sensor_child_frame" default="base_link"/>
   <arg name="sensor_tf_x" default="0.0"/>
   <arg name="sensor_tf_y" default="0.0"/>
   <arg name="sensor_tf_z" default="0.0"/>
@@ -66,6 +67,7 @@
       <arg name="obstacle_z_max" value="$(var obstacle_z_max)"/>
       <arg name="grid_resolution" value="$(var grid_resolution)"/>
       <arg name="max_considered_range" value="$(var max_considered_range)"/>
+      <arg name="publish_debug_topics" value="$(var publish_debug_topics)"/>
     </include>
   </group>
 
