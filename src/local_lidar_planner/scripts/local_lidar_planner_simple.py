@@ -59,6 +59,7 @@ class SimpleLocalPlanner(Node):
         self.declare_parameter("goal_tf_timeout", 0.5)
         self.declare_parameter("obstacle_topic", "/local_obstacles")
         self.declare_parameter("publish_debug_topics", False)
+        self.declare_parameter("publish_grid_topics", True)
         self.declare_parameter("goal_cache_seconds", 0.5)
         self.declare_parameter("goal_disconnect_seconds", 1.5)
 
@@ -86,6 +87,7 @@ class SimpleLocalPlanner(Node):
             raise ValueError("goal_tf_frame parameter must be set (e.g., 'suitcase_frame').")
         self.goal_tf_timeout = self.get_parameter("goal_tf_timeout").get_parameter_value().double_value
         self.publish_debug_topics = self.get_parameter("publish_debug_topics").get_parameter_value().bool_value
+        self.publish_grid_topics = self.get_parameter("publish_grid_topics").get_parameter_value().bool_value
         self.goal_cache_seconds = max(
             0.0, self.get_parameter("goal_cache_seconds").get_parameter_value().double_value
         )
@@ -125,10 +127,13 @@ class SimpleLocalPlanner(Node):
         obstacle_topic = self.get_parameter("obstacle_topic").get_parameter_value().string_value
         if self.publish_debug_topics:
             self.obstacle_pub = self.create_publisher(PointCloud2, obstacle_topic, debug_qos)
+        else:
+            self.obstacle_pub = None
+
+        if self.publish_grid_topics:
             self.grid_pub = self.create_publisher(OccupancyGrid, "/local_obstacles_grid", debug_qos)
             self.potential_pub = self.create_publisher(OccupancyGrid, "/local_potential_grid", debug_qos)
         else:
-            self.obstacle_pub = None
             self.grid_pub = None
             self.potential_pub = None
 
@@ -197,7 +202,10 @@ class SimpleLocalPlanner(Node):
                 obstacle_msg.header = obstacle_header
             obstacle_msg.header.stamp = now_msg
             self.obstacle_pub.publish(obstacle_msg)
+
+        if self.grid_pub is not None:
             self.grid_pub.publish(self._build_grid_map(xy_points, inflated=False, stamp=now_msg))
+        if self.potential_pub is not None:
             self.potential_pub.publish(self._build_grid_map(xy_points, inflated=True, stamp=now_msg))
         self.latest_obstacles = xy_points
 
