@@ -25,7 +25,7 @@ from rclpy.qos import (
     HistoryPolicy,
 )
 
-from geometry_msgs.msg import PointStamped, PoseStamped
+from geometry_msgs.msg import PointStamped, PoseStamped, TransformStamped
 from nav_msgs.msg import OccupancyGrid, Path
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
@@ -54,6 +54,7 @@ class SimpleLocalPlanner(Node):
         self.declare_parameter("obstacle_z_max", 1.0)
         self.declare_parameter("scan_topic", "/terrain_map_ext")
         self.declare_parameter("scan_frame", "map")
+        self.declare_parameter("scan_tf_timeout", 0.05)
         self.declare_parameter("goal_tf_frame", "")
         self.declare_parameter("goal_tf_timeout", 0.5)
         self.declare_parameter("obstacle_topic", "/local_obstacles")
@@ -76,6 +77,8 @@ class SimpleLocalPlanner(Node):
         self.obstacle_z_max = self.get_parameter("obstacle_z_max").get_parameter_value().double_value
         self.scan_topic = self.get_parameter("scan_topic").get_parameter_value().string_value
         self.scan_frame = self.get_parameter("scan_frame").get_parameter_value().string_value
+        self.scan_tf_timeout = max(0.0, self.get_parameter("scan_tf_timeout").get_parameter_value().double_value)
+        self._scan_tf_timeout_duration = Duration(seconds=self.scan_tf_timeout)
         self.goal_tf_frame = self.get_parameter("goal_tf_frame").get_parameter_value().string_value
         if not self.goal_tf_frame:
             raise ValueError("goal_tf_frame parameter must be set (e.g., 'suitcase_frame').")
@@ -90,6 +93,7 @@ class SimpleLocalPlanner(Node):
         self._last_tf_warn_time = 0.0
         self._last_goal_tf_stamp: Optional[Tuple[int, int]] = None
         self._last_goal_stale_warn_time = 0.0
+        self._last_cloud_tf_warn_time = 0.0
 
         # Interfaces
         sensor_qos = QoSProfile(
@@ -138,18 +142,8 @@ class SimpleLocalPlanner(Node):
         if stamp_msg.sec == 0 and stamp_msg.nanosec == 0:
             lookup_time = Time()
 
-        try:
-            transform = self.tf_buffer.lookup_transform(
-                self.path_frame,
-                source_frame,
-                lookup_time,
-                timeout=Duration(seconds=max(self.goal_tf_timeout, 0.1)),
-            )
-        except TransformException as exc:
-            now_sec = self.get_clock().now().nanoseconds / 1e9
-            if now_sec - self._last_tf_warn_time > 2.0:
-                self.get_logger().warn(f"Failed to transform cloud from {source_frame} to {self.path_frame}: {exc}")
-                self._last_tf_warn_time = now_sec
+        transform = self._lookup_cloud_transform(source_frame, lookup_time)
+        if transform is None:
             return
 
         rotation = quaternion_matrix(
@@ -295,6 +289,36 @@ class SimpleLocalPlanner(Node):
             if now_sec - self._last_tf_warn_time > 2.0:
                 self.get_logger().warn(f"TF lookup failed ({self.goal_tf_frame}): {exc}")
                 self._last_tf_warn_time = now_sec
+            return None
+
+    def _lookup_cloud_transform(self, source_frame: str, lookup_time: Time) -> Optional[TransformStamped]:
+        try:
+            return self.tf_buffer.lookup_transform(
+                self.path_frame,
+                source_frame,
+                lookup_time,
+                timeout=self._scan_tf_timeout_duration,
+            )
+        except TransformException as exc:
+            # If the transform is only slightly out of date/future, fall back to the latest available transform.
+            exc_text = str(exc).lower()
+            if "extrapolation" in exc_text or "would require" in exc_text:
+                try:
+                    return self.tf_buffer.lookup_transform(
+                        self.path_frame,
+                        source_frame,
+                        Time(),
+                        timeout=Duration(seconds=0.0),
+                    )
+                except TransformException:
+                    pass
+
+            now_sec = self.get_clock().now().nanoseconds / 1e9
+            if now_sec - self._last_cloud_tf_warn_time > 1.5:
+                self.get_logger().warn(
+                    f"Failed to transform cloud from {source_frame} to {self.path_frame}: {exc}"
+                )
+                self._last_cloud_tf_warn_time = now_sec
             return None
 
     def _build_occupancy(self) -> Set[Tuple[int, int]]:

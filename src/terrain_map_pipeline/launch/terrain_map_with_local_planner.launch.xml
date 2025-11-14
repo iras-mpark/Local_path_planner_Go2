@@ -25,6 +25,7 @@
   <arg name="obstacle_z_max" default="1.0"/>
   <arg name="grid_resolution" default="0.2"/>
   <arg name="max_considered_range" default="4.0"/>
+  <arg name="scan_tf_timeout" default="0.05"/>
   <arg name="publish_debug_topics" default="false"/>
 
   <!-- Optional TF bridge between robot base and sensor frame -->
@@ -67,6 +68,7 @@
       <arg name="obstacle_z_max" value="$(var obstacle_z_max)"/>
       <arg name="grid_resolution" value="$(var grid_resolution)"/>
       <arg name="max_considered_range" value="$(var max_considered_range)"/>
+      <arg name="scan_tf_timeout" value="$(var scan_tf_timeout)"/>
       <arg name="publish_debug_topics" value="$(var publish_debug_topics)"/>
     </include>
   </group>

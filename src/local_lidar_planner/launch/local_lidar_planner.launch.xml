@@ -19,6 +19,7 @@
   <arg name="obstacle_z_max" default="1.0"/>
   <arg name="grid_resolution" default="0.2"/>
   <arg name="max_considered_range" default="4.0"/>
+  <arg name="scan_tf_timeout" default="0.05"/>
   <arg name="publish_debug_topics" default="false"/>
 
   <node pkg="local_lidar_planner" exec="local_lidar_planner_simple.py" name="local_lidar_planner_simple" output="screen">
@@ -30,6 +31,7 @@
     <param name="goal_tf_frame" value="$(var goal_tf_frame)"/>
     <param name="goal_offset" value="$(var goal_offset)"/>
     <param name="goal_tf_timeout" value="$(var goal_tf_timeout)"/>
+    <param name="scan_tf_timeout" value="$(var scan_tf_timeout)"/>
     <param name="obstacle_z_min" value="$(var obstacle_z_min)"/>
     <param name="obstacle_z_max" value="$(var obstacle_z_max)"/>
     <param name="grid_resolution" value="$(var grid_resolution)"/>
