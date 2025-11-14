@@ -18,9 +18,9 @@
   </include>
 
   <node pkg="tf2_ros" exec="static_transform_publisher" name="loam_map_to_camera_init"
-        args="0 0 0 0 0 0 /map /camera_init"/>
+        args="0 0 0 0 0 0 map camera_init"/>
 
   <node pkg="tf2_ros" exec="static_transform_publisher" name="loam_aft_to_sensor"
-        args="0 0 0 0 0 0 /aft_mapped /sensor"/>
+        args="0 0 0 0 0 0 aft_mapped sensor"/>
 
 </launch>
