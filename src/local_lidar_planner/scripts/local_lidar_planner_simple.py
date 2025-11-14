@@ -59,6 +59,8 @@ class SimpleLocalPlanner(Node):
         self.declare_parameter("goal_tf_timeout", 0.5)
         self.declare_parameter("obstacle_topic", "/local_obstacles")
         self.declare_parameter("publish_debug_topics", False)
+        self.declare_parameter("goal_cache_seconds", 0.5)
+        self.declare_parameter("goal_disconnect_seconds", 1.5)
 
         self.path_frame: str = self.get_parameter("path_frame").get_parameter_value().string_value
         publish_rate_hz = self.get_parameter("publish_rate_hz").get_parameter_value().double_value
@@ -84,6 +86,11 @@ class SimpleLocalPlanner(Node):
             raise ValueError("goal_tf_frame parameter must be set (e.g., 'suitcase_frame').")
         self.goal_tf_timeout = self.get_parameter("goal_tf_timeout").get_parameter_value().double_value
         self.publish_debug_topics = self.get_parameter("publish_debug_topics").get_parameter_value().bool_value
+        self.goal_cache_seconds = max(
+            0.0, self.get_parameter("goal_cache_seconds").get_parameter_value().double_value
+        )
+        disconnect_default = self.get_parameter("goal_disconnect_seconds").get_parameter_value().double_value
+        self.goal_disconnect_seconds = max(self.goal_cache_seconds, disconnect_default, 0.0)
 
         self.latest_obstacles: List[Tuple[float, float]] = []
 
@@ -94,6 +101,8 @@ class SimpleLocalPlanner(Node):
         self._last_goal_tf_stamp: Optional[Tuple[int, int]] = None
         self._last_goal_stale_warn_time = 0.0
         self._last_cloud_tf_warn_time = 0.0
+        self._last_goal_update_wall_time: Optional[float] = None
+        self._last_goal_transform: Optional[Tuple[float, float]] = None
 
         # Interfaces
         sensor_qos = QoSProfile(
@@ -256,6 +265,7 @@ class SimpleLocalPlanner(Node):
         return path
 
     def _lookup_goal_in_vehicle(self, stamp: Time) -> Optional[Tuple[float, float]]:
+        now_sec = self.get_clock().now().nanoseconds / 1e9
         try:
             transform = self.tf_buffer.lookup_transform(
                 self.path_frame,
@@ -272,23 +282,56 @@ class SimpleLocalPlanner(Node):
             raw_msg.point.y = rel_y
             self.goal_raw_pub.publish(raw_msg)
             tf_stamp = (transform.header.stamp.sec, transform.header.stamp.nanosec)
-            if (
-                self._last_goal_tf_stamp is not None
-                and tf_stamp == self._last_goal_tf_stamp
-                and tf_stamp != (0, 0)
-            ):
-                now_sec = self.get_clock().now().nanoseconds / 1e9
-                if now_sec - self._last_goal_stale_warn_time > 2.0:
-                    self.get_logger().warn("Goal TF timestamp is stale. Holding position.")
-                    self._last_goal_stale_warn_time = now_sec
-                return None
-            self._last_goal_tf_stamp = tf_stamp
-            return rel_x, rel_y
+            is_zero_stamp = tf_stamp == (0, 0)
+            is_new_stamp = (not is_zero_stamp) and tf_stamp != self._last_goal_tf_stamp
+            if self._last_goal_tf_stamp is None or is_new_stamp or is_zero_stamp:
+                if not is_zero_stamp:
+                    self._last_goal_tf_stamp = tf_stamp
+                self._last_goal_update_wall_time = now_sec
+                self._last_goal_transform = (rel_x, rel_y)
+                return rel_x, rel_y
+
+            # Stamp did not change -> allow brief reuse, then stop
+            if self._last_goal_update_wall_time is not None:
+                stale_duration = now_sec - self._last_goal_update_wall_time
+                if stale_duration >= self.goal_disconnect_seconds:
+                    if now_sec - self._last_goal_stale_warn_time > 1.0:
+                        self.get_logger().warn(
+                            f"Goal TF has not updated for {stale_duration:.2f}s; stopping."
+                        )
+                        self._last_goal_stale_warn_time = now_sec
+                    return None
+
+            return self._last_goal_transform
         except TransformException as exc:
-            now_sec = self.get_clock().now().nanoseconds / 1e9
+            can_reuse_cached = (
+                self._last_goal_transform is not None
+                and self._last_goal_update_wall_time is not None
+                and (now_sec - self._last_goal_update_wall_time) <= self.goal_cache_seconds
+            )
+            if can_reuse_cached:
+                if now_sec - self._last_tf_warn_time > 2.0:
+                    self.get_logger().warn(
+                        f"TF lookup failed ({self.goal_tf_frame}); using cached goal "
+                        f"for up to {self.goal_cache_seconds:.2f}s. Error: {exc}"
+                    )
+                    self._last_tf_warn_time = now_sec
+                return self._last_goal_transform
+
             if now_sec - self._last_tf_warn_time > 2.0:
                 self.get_logger().warn(f"TF lookup failed ({self.goal_tf_frame}): {exc}")
                 self._last_tf_warn_time = now_sec
+
+            if (
+                self._last_goal_update_wall_time is not None
+                and now_sec - self._last_goal_update_wall_time >= self.goal_disconnect_seconds
+            ):
+                if now_sec - self._last_goal_stale_warn_time > 1.0:
+                    self.get_logger().warn(
+                        f"Goal TF missing for {now_sec - self._last_goal_update_wall_time:.2f}s; stopping."
+                    )
+                    self._last_goal_stale_warn_time = now_sec
+                self._last_goal_transform = None
             return None
 
     def _lookup_cloud_transform(self, source_frame: str, lookup_time: Time) -> Optional[TransformStamped]:
