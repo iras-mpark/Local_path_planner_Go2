@@ -59,7 +59,7 @@
                             0.0, 0.0, 1.0 ]
 
         odometry: 
-            publish_odometry_without_downsample: true  
+            publish_odometry_without_downsample: false
 
         publish:
             path_en: false                 # false: close the path output
